@@ -7,8 +7,10 @@ import (
 	"strings"
 
 	"github.com/go-gl/gl/v3.3-core/gl"
+	"github.com/go-gl/mathgl/mgl32"
 )
 
+//Shader ...
 type Shader struct {
 	id uint32
 }
@@ -73,4 +75,28 @@ func compileShader(path string, shaderType uint32) (uint32, error) {
 	}
 
 	return shader, nil
+}
+
+//SetBool ...
+func (s Shader) SetBool(loc string, p bool) {
+	var val int32 = 1
+	if !p {
+		val = 0
+	}
+	gl.Uniform1i(gl.GetUniformLocation(s.id, gl.Str(loc)), val)
+}
+
+//SetFloat ...
+func (s Shader) SetFloat(loc string, f float32) {
+	gl.Uniform1f(gl.GetUniformLocation(s.id, gl.Str(loc)), f)
+}
+
+//SetInt ...
+func (s Shader) SetInt(loc string, n int32) {
+	gl.Uniform1i(gl.GetUniformLocation(s.id, gl.Str(loc)), n)
+}
+
+//SetMat4 ...
+func (s Shader) SetMat4(loc string, m mgl32.Mat4) {
+	gl.UniformMatrix4fv(gl.GetUniformLocation(s.id, gl.Str(loc)), 1, false, &m[0])
 }

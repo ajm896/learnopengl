@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-gl/gl/v3.3-core/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
+	"github.com/go-gl/mathgl/mgl32"
 )
 
 const (
@@ -23,15 +24,51 @@ const (
 )
 
 var (
-	triangle = []float32{
-		// positions          // colors           // texture coords
-		0.5, 0.5, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, // top right
-		0.5, -0.5, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, // bottom right
-		-0.5, -0.5, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, // bottom left
-		-0.5, 0.5, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, // top left
+	bModel = []float32{
+		-0.5, -0.5, -0.5, 0.0, 0.0,
+		0.5, -0.5, -0.5, 1.0, 0.0,
+		0.5, 0.5, -0.5, 1.0, 1.0,
+		0.5, 0.5, -0.5, 1.0, 1.0,
+		-0.5, 0.5, -0.5, 0.0, 1.0,
+		-0.5, -0.5, -0.5, 0.0, 0.0,
+
+		-0.5, -0.5, 0.5, 0.0, 0.0,
+		0.5, -0.5, 0.5, 1.0, 0.0,
+		0.5, 0.5, 0.5, 1.0, 1.0,
+		0.5, 0.5, 0.5, 1.0, 1.0,
+		-0.5, 0.5, 0.5, 0.0, 1.0,
+		-0.5, -0.5, 0.5, 0.0, 0.0,
+
+		-0.5, 0.5, 0.5, 1.0, 0.0,
+		-0.5, 0.5, -0.5, 1.0, 1.0,
+		-0.5, -0.5, -0.5, 0.0, 1.0,
+		-0.5, -0.5, -0.5, 0.0, 1.0,
+		-0.5, -0.5, 0.5, 0.0, 0.0,
+		-0.5, 0.5, 0.5, 1.0, 0.0,
+
+		0.5, 0.5, 0.5, 1.0, 0.0,
+		0.5, 0.5, -0.5, 1.0, 1.0,
+		0.5, -0.5, -0.5, 0.0, 1.0,
+		0.5, -0.5, -0.5, 0.0, 1.0,
+		0.5, -0.5, 0.5, 0.0, 0.0,
+		0.5, 0.5, 0.5, 1.0, 0.0,
+
+		-0.5, -0.5, -0.5, 0.0, 1.0,
+		0.5, -0.5, -0.5, 1.0, 1.0,
+		0.5, -0.5, 0.5, 1.0, 0.0,
+		0.5, -0.5, 0.5, 1.0, 0.0,
+		-0.5, -0.5, 0.5, 0.0, 0.0,
+		-0.5, -0.5, -0.5, 0.0, 1.0,
+
+		-0.5, 0.5, -0.5, 0.0, 1.0,
+		0.5, 0.5, -0.5, 1.0, 1.0,
+		0.5, 0.5, 0.5, 1.0, 0.0,
+		0.5, 0.5, 0.5, 1.0, 0.0,
+		-0.5, 0.5, 0.5, 0.0, 0.0,
+		-0.5, 0.5, -0.5, 0.0, 1.0,
 	}
 
-	indices = []uint32{
+	bIndices = []uint32{
 		0, 1, 3,
 		1, 2, 3,
 	}
@@ -45,14 +82,21 @@ func main() {
 
 	prog := initGL()
 
-	vao, texture := makeVAO(triangle)
+	vao, texture := makeObject(bModel, bIndices)
 
 	window.SetKeyCallback(keyHandler)
 	// gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
 
 	for !window.ShouldClose() {
-		glfw.PollEvents()
 		prog.Use()
+		model := mgl32.HomogRotate3DX(mgl32.DegToRad(-55))
+		view := mgl32.Translate3D(0, 0, -3)
+		proj := mgl32.Perspective(mgl32.DegToRad(45), w/h, 0.1, 100)
+		prog.SetMat4("model\x00", model)
+		prog.SetMat4("view\x00", view)
+		prog.SetMat4("proj\x00", proj)
+
+		glfw.PollEvents()
 		render(vao, texture)
 		window.SwapBuffers()
 	}
@@ -88,6 +132,7 @@ func initGL() Shader {
 	log.Println("OpenGL version", version)
 
 	prog := NewShader(vPath, fPath)
+	gl.Enable(gl.DEPTH_TEST)
 
 	return prog
 }
@@ -102,39 +147,35 @@ func keyHandler(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, 
 }
 
 func render(vao uint32, texture uint32) {
-	gl.ClearColor(0.2, 0.3, 0.3, 1)
-	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-
-	gl.BindTexture(gl.TEXTURE_2D, texture)
+	clear()
 
 	gl.BindVertexArray(vao)
-	gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINES)
-	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
-	// gl.DrawArrays(gl.TRIANGLES, 0, 3)
+	gl.BindTexture(gl.TEXTURE_2D, texture)
+
+	// gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINES)
+	// gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
+	gl.DrawArrays(gl.TRIANGLES, 0, 36)
 }
 
-func makeVAO(verts []float32) (uint32, uint32) {
+func makeObject(verts []float32, indices []uint32) (uint32, uint32) {
 	var VBO, VAO, EBO, texture uint32
 
 	gl.GenVertexArrays(1, &VAO)
-	gl.GenBuffers(1, &VBO)
-	gl.GenBuffers(1, &EBO)
-
 	gl.BindVertexArray(VAO)
 
-	gl.BindBuffer(gl.ARRAY_BUFFER, VBO)
-	gl.BufferData(gl.ARRAY_BUFFER, fSize*len(verts), gl.Ptr(verts), gl.STATIC_DRAW)
+	makeVBO(VBO, verts)
+	makeEBO(EBO, indices)
 
-	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBO)
-	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, fSize*len(indices), gl.Ptr(indices), gl.STATIC_DRAW)
-
-	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, fSize*8, gl.PtrOffset(0))
+	//POS
+	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, fSize*5, gl.PtrOffset(0))
 	gl.EnableVertexAttribArray(0)
 
-	gl.VertexAttribPointer(1, 3, gl.FLOAT, false, fSize*8, gl.PtrOffset(12))
-	gl.EnableVertexAttribArray(1)
+	// //Color
+	// gl.VertexAttribPointer(1, 3, gl.FLOAT, false, fSize*5, gl.PtrOffset(12))
+	// gl.EnableVertexAttribArray(1)
 
-	gl.VertexAttribPointer(2, 2, gl.FLOAT, false, fSize*8, gl.PtrOffset(24))
+	//Text Coords
+	gl.VertexAttribPointer(2, 2, gl.FLOAT, false, fSize*5, gl.PtrOffset(12))
 	gl.EnableVertexAttribArray(2)
 
 	m := loadTextImg(texturePath)
@@ -152,7 +193,17 @@ func makeVAO(verts []float32) (uint32, uint32) {
 
 	return VAO, texture
 }
+func makeVBO(vbo uint32, verts []float32) {
+	gl.GenBuffers(1, &vbo)
+	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
+	gl.BufferData(gl.ARRAY_BUFFER, fSize*len(verts), gl.Ptr(verts), gl.STATIC_DRAW)
+}
 
+func makeEBO(ebo uint32, indices []uint32) {
+	gl.GenBuffers(1, &ebo)
+	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, ebo)
+	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, fSize*len(indices), gl.Ptr(indices), gl.STATIC_DRAW)
+}
 func loadTextImg(texturePath string) *image.RGBA {
 	file, err := os.Open(texturePath)
 	if err != nil {
@@ -168,5 +219,10 @@ func loadTextImg(texturePath string) *image.RGBA {
 	m := image.NewRGBA(data.Bounds())
 	draw.Draw(m, m.Bounds(), data, image.Pt(0, 0), draw.Src)
 	return m
+}
+
+func clear() {
+	gl.ClearColor(0.2, 0.3, 0.3, 1)
+	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
 }
