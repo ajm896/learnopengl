@@ -1,14 +1,12 @@
 package main
 
 import (
-	"fmt"
 	"image"
 	"image/draw"
 	_ "image/jpeg"
 	"log"
 	"os"
 	"runtime"
-	"strings"
 
 	"github.com/go-gl/gl/v3.3-core/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
@@ -19,35 +17,9 @@ const (
 	w     = 800
 	h     = 600
 
-	texturePath = "assests/container.jpg"
-
-	vertexShaderSource = `
-	#version 330 core
-	layout (location = 0) in vec3 aPos;
-	layout (location = 1) in vec3 aColor;
-	layout (location = 2) in vec2 aTexCoord;
-	out vec4 color;
-	out vec2 texcoord;
-	void main() {
-		gl_Position = vec4(aPos, 1.0);
-		color = vec4(aColor, 1.0);
-		texcoord = aTexCoord;
-	}
-` + "\x00"
-
-	fragmentShaderSource = `
-	#version 330 core
-	out vec4 frag_colour;
-
-	in vec4 color;
-	in vec2 texcoord;
-	
-	uniform sampler2D ourText;
-
-	void main() {
-		frag_colour = texture(ourText, texcoord);
-	}
-` + "\x00"
+	texturePath = "assets/container.jpg"
+	vPath       = "shaders/box.vert"
+	fPath       = "shaders/box.frag"
 )
 
 var (
@@ -74,12 +46,14 @@ func main() {
 	prog := initGL()
 
 	vao, texture := makeVAO(triangle)
+
 	window.SetKeyCallback(keyHandler)
 	// gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
 
 	for !window.ShouldClose() {
 		glfw.PollEvents()
-		render(prog, vao, texture)
+		prog.Use()
+		render(vao, texture)
 		window.SwapBuffers()
 	}
 }
@@ -106,27 +80,15 @@ func initGLFW() *glfw.Window {
 	return window
 }
 
-func initGL() uint32 {
+func initGL() Shader {
 	if err := gl.Init(); err != nil {
 		panic(err)
 	}
 	version := gl.GoStr(gl.GetString(gl.VERSION))
 	log.Println("OpenGL version", version)
 
-	vertexShader, err := compileShader(vertexShaderSource, gl.VERTEX_SHADER)
-	if err != nil {
-		panic(err)
-	}
+	prog := NewShader(vPath, fPath)
 
-	fragmentShader, err := compileShader(fragmentShaderSource, gl.FRAGMENT_SHADER)
-	if err != nil {
-		panic(err)
-	}
-
-	prog := gl.CreateProgram()
-	gl.AttachShader(prog, vertexShader)
-	gl.AttachShader(prog, fragmentShader)
-	gl.LinkProgram(prog)
 	return prog
 }
 
@@ -139,17 +101,15 @@ func keyHandler(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, 
 	}
 }
 
-func render(p uint32, vao uint32, texture uint32) {
+func render(vao uint32, texture uint32) {
 	gl.ClearColor(0.2, 0.3, 0.3, 1)
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-
-	gl.UseProgram(p)
 
 	gl.BindTexture(gl.TEXTURE_2D, texture)
 
 	gl.BindVertexArray(vao)
-
-	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, gl.Ptr(indices))
+	gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINES)
+	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
 	// gl.DrawArrays(gl.TRIANGLES, 0, 3)
 }
 
@@ -187,33 +147,10 @@ func makeVAO(verts []float32) (uint32, uint32) {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGB, 512, 512, 0, gl.RGB, gl.UNSIGNED_BYTE, gl.Ptr(m.Pix))
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 512, 512, 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(m.Pix))
 	gl.GenerateMipmap(gl.TEXTURE_2D)
 
 	return VAO, texture
-}
-
-func compileShader(source string, shaderType uint32) (uint32, error) {
-	shader := gl.CreateShader(shaderType)
-
-	csources, free := gl.Strs(source)
-	gl.ShaderSource(shader, 1, csources, nil)
-	free()
-	gl.CompileShader(shader)
-
-	var status int32
-	gl.GetShaderiv(shader, gl.COMPILE_STATUS, &status)
-	if status == gl.FALSE {
-		var logLength int32
-		gl.GetShaderiv(shader, gl.INFO_LOG_LENGTH, &logLength)
-
-		log := strings.Repeat("\x00", int(logLength+1))
-		gl.GetShaderInfoLog(shader, logLength, nil, gl.Str(log))
-
-		return 0, fmt.Errorf("failed to compile %v: %v", source, log)
-	}
-
-	return shader, nil
 }
 
 func loadTextImg(texturePath string) *image.RGBA {
