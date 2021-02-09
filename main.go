@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"image"
+	"image/draw"
 	_ "image/jpeg"
 	"log"
 	"os"
@@ -14,22 +15,23 @@ import (
 )
 
 const (
-	w = 800
-	h = 600
+	fSize = 4
+	w     = 800
+	h     = 600
 
 	texturePath = "assests/container.jpg"
 
 	vertexShaderSource = `
 	#version 330 core
-	layout (location = 0) in vec3 vp;
+	layout (location = 0) in vec3 aPos;
 	layout (location = 1) in vec3 aColor;
-	layout (location = 2) in vec2 aText;
+	layout (location = 2) in vec2 aTexCoord;
 	out vec4 color;
 	out vec2 texcoord;
 	void main() {
-		gl_Position = vec4(vp, 1.0);
+		gl_Position = vec4(aPos, 1.0);
 		color = vec4(aColor, 1.0);
-		texcoord = aText;
+		texcoord = aTexCoord;
 	}
 ` + "\x00"
 
@@ -53,7 +55,7 @@ var (
 		// positions          // colors           // texture coords
 		0.5, 0.5, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, // top right
 		0.5, -0.5, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, // bottom right
-		-0.5, -0.5, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, // bottom let
+		-0.5, -0.5, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, // bottom left
 		-0.5, 0.5, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, // top left
 	}
 
@@ -70,12 +72,14 @@ func main() {
 	defer glfw.Terminate()
 
 	prog := initGL()
-	vao := makeVAO(triangle)
+
+	vao, texture := makeVAO(triangle)
 	window.SetKeyCallback(keyHandler)
 	// gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
+
 	for !window.ShouldClose() {
-		render(prog, vao)
 		glfw.PollEvents()
+		render(prog, vao, texture)
 		window.SwapBuffers()
 	}
 }
@@ -135,37 +139,45 @@ func keyHandler(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, 
 	}
 }
 
-func render(p uint32, vao uint32) {
+func render(p uint32, vao uint32, texture uint32) {
 	gl.ClearColor(0.2, 0.3, 0.3, 1)
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+
 	gl.UseProgram(p)
+
+	gl.BindTexture(gl.TEXTURE_2D, texture)
+
 	gl.BindVertexArray(vao)
+
 	gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, gl.Ptr(indices))
 	// gl.DrawArrays(gl.TRIANGLES, 0, 3)
 }
 
-func makeVAO(verts []float32) uint32 {
-	var VBO, VAO uint32
-	var EBO, texture uint32
-	//gl.BindVertexArray(VAO)
+func makeVAO(verts []float32) (uint32, uint32) {
+	var VBO, VAO, EBO, texture uint32
 
+	gl.GenVertexArrays(1, &VAO)
 	gl.GenBuffers(1, &VBO)
-	gl.BindBuffer(gl.ARRAY_BUFFER, VBO)
-	gl.BufferData(gl.ARRAY_BUFFER, 4*len(verts), gl.Ptr(verts), gl.STATIC_DRAW)
-
 	gl.GenBuffers(1, &EBO)
+
+	gl.BindVertexArray(VAO)
+
+	gl.BindBuffer(gl.ARRAY_BUFFER, VBO)
+	gl.BufferData(gl.ARRAY_BUFFER, fSize*len(verts), gl.Ptr(verts), gl.STATIC_DRAW)
+
 	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBO)
-	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, 4*len(indices), gl.Ptr(indices), gl.STATIC_DRAW)
+	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, fSize*len(indices), gl.Ptr(indices), gl.STATIC_DRAW)
 
-	file, err := os.Open(texturePath)
-	if err != nil {
-		panic(err)
-	}
+	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, fSize*8, gl.PtrOffset(0))
+	gl.EnableVertexAttribArray(0)
 
-	data, _, err := image.Decode(file)
-	if err != nil {
-		panic(err)
-	}
+	gl.VertexAttribPointer(1, 3, gl.FLOAT, false, fSize*8, gl.PtrOffset(12))
+	gl.EnableVertexAttribArray(1)
+
+	gl.VertexAttribPointer(2, 2, gl.FLOAT, false, fSize*8, gl.PtrOffset(24))
+	gl.EnableVertexAttribArray(2)
+
+	m := loadTextImg(texturePath)
 
 	gl.GenTextures(1, &texture)
 	gl.BindTexture(gl.TEXTURE_2D, texture)
@@ -175,18 +187,10 @@ func makeVAO(verts []float32) uint32 {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGB, 512, 512, 0, gl.RGB, gl.UNSIGNED_BYTE, gl.Ptr(data))
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGB, 512, 512, 0, gl.RGB, gl.UNSIGNED_BYTE, gl.Ptr(m.Pix))
 	gl.GenerateMipmap(gl.TEXTURE_2D)
 
-	gl.GenVertexArrays(1, &VAO)
-	gl.BindVertexArray(VAO)
-	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, 8*4, gl.PtrOffset(0))
-	gl.EnableVertexAttribArray(0)
-	gl.VertexAttribPointer(1, 3, gl.FLOAT, false, 8*4, gl.PtrOffset(12))
-	gl.EnableVertexAttribArray(1)
-	gl.VertexAttribPointer(2, 2, gl.FLOAT, false, 8*4, gl.PtrOffset(24))
-	gl.EnableVertexAttribArray(2)
-	return VAO
+	return VAO, texture
 }
 
 func compileShader(source string, shaderType uint32) (uint32, error) {
@@ -210,4 +214,22 @@ func compileShader(source string, shaderType uint32) (uint32, error) {
 	}
 
 	return shader, nil
+}
+
+func loadTextImg(texturePath string) *image.RGBA {
+	file, err := os.Open(texturePath)
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+
+	data, _, err := image.Decode(file)
+	if err != nil {
+		panic(err)
+	}
+
+	m := image.NewRGBA(data.Bounds())
+	draw.Draw(m, m.Bounds(), data, image.Pt(0, 0), draw.Src)
+	return m
+
 }
