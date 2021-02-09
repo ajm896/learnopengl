@@ -74,6 +74,21 @@ var (
 	}
 )
 
+var (
+	cubePositions = [][]float32{
+		{0.0, 0.0, 0.0},
+		{2.0, 5.0, -15.0},
+		{-1.5, -2.2, -2.5},
+		{-3.8, -2.0, -12.3},
+		{2.4, -0.4, -3.5},
+		{-1.7, 3.0, -7.5},
+		{1.3, -2.0, -2.5},
+		{1.5, 2.0, -2.5},
+		{1.5, 0.2, -1.5},
+		{-1.3, 1.0, -1.5},
+	}
+)
+
 func main() {
 	runtime.LockOSThread()
 
@@ -89,15 +104,14 @@ func main() {
 
 	for !window.ShouldClose() {
 		prog.Use()
-		model := mgl32.HomogRotate3DX(mgl32.DegToRad(-55))
 		view := mgl32.Translate3D(0, 0, -3)
 		proj := mgl32.Perspective(mgl32.DegToRad(45), w/h, 0.1, 100)
-		prog.SetMat4("model\x00", model)
+
 		prog.SetMat4("view\x00", view)
 		prog.SetMat4("proj\x00", proj)
 
 		glfw.PollEvents()
-		render(vao, texture)
+		render(vao, texture, prog)
 		window.SwapBuffers()
 	}
 }
@@ -146,7 +160,7 @@ func keyHandler(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, 
 	}
 }
 
-func render(vao uint32, texture uint32) {
+func render(vao uint32, texture uint32, prog Shader) {
 	clear()
 
 	gl.BindVertexArray(vao)
@@ -154,7 +168,18 @@ func render(vao uint32, texture uint32) {
 
 	// gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINES)
 	// gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
-	gl.DrawArrays(gl.TRIANGLES, 0, 36)
+	for i := 0; i < 10; i++ {
+		model := mgl32.Translate3D(cubePositions[i][0],
+			cubePositions[i][1],
+			cubePositions[i][2])
+
+		model = model.Mul4(mgl32.HomogRotate3D(20.0*float32(i), mgl32.Vec3{.0, .3, .5}))
+
+		prog.SetMat4("model\x00", model)
+
+		gl.DrawArrays(gl.TRIANGLES, 0, 36)
+	}
+
 }
 
 func makeObject(verts []float32, indices []uint32) (uint32, uint32) {
