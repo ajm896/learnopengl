@@ -2,7 +2,10 @@ package main
 
 import (
 	"fmt"
+	"image"
+	_ "image/jpeg"
 	"log"
+	"os"
 	"runtime"
 	"strings"
 
@@ -14,32 +17,44 @@ const (
 	w = 800
 	h = 600
 
+	texturePath = "assests/container.jpg"
+
 	vertexShaderSource = `
 	#version 330 core
 	layout (location = 0) in vec3 vp;
 	layout (location = 1) in vec3 aColor;
+	layout (location = 2) in vec2 aText;
 	out vec4 color;
+	out vec2 texcoord;
 	void main() {
 		gl_Position = vec4(vp, 1.0);
 		color = vec4(aColor, 1.0);
+		texcoord = aText;
 	}
 ` + "\x00"
 
 	fragmentShaderSource = `
 	#version 330 core
-	in vec4 color;
 	out vec4 frag_colour;
+
+	in vec4 color;
+	in vec2 texcoord;
+	
+	uniform sampler2D ourText;
+
 	void main() {
-		frag_colour = color;
+		frag_colour = texture(ourText, texcoord);
 	}
 ` + "\x00"
 )
 
 var (
 	triangle = []float32{
-		0.5, 0.5, 0.0,
-		0.5, -0.5, 0.0,
-		-0.5, -0.5, 0.0,
+		// positions          // colors           // texture coords
+		0.5, 0.5, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, // top right
+		0.5, -0.5, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, // bottom right
+		-0.5, -0.5, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, // bottom let
+		-0.5, 0.5, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, // top left
 	}
 
 	indices = []uint32{
@@ -131,7 +146,7 @@ func render(p uint32, vao uint32) {
 
 func makeVAO(verts []float32) uint32 {
 	var VBO, VAO uint32
-	var EBO uint32
+	var EBO, texture uint32
 	//gl.BindVertexArray(VAO)
 
 	gl.GenBuffers(1, &VBO)
@@ -142,17 +157,35 @@ func makeVAO(verts []float32) uint32 {
 	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBO)
 	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, 4*len(indices), gl.Ptr(indices), gl.STATIC_DRAW)
 
+	file, err := os.Open(texturePath)
+	if err != nil {
+		panic(err)
+	}
+
+	data, _, err := image.Decode(file)
+	if err != nil {
+		panic(err)
+	}
+
+	gl.GenTextures(1, &texture)
+	gl.BindTexture(gl.TEXTURE_2D, texture)
+
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGB, 512, 512, 0, gl.RGB, gl.UNSIGNED_BYTE, gl.Ptr(data))
+	gl.GenerateMipmap(gl.TEXTURE_2D)
+
 	gl.GenVertexArrays(1, &VAO)
 	gl.BindVertexArray(VAO)
-	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, 6*4, gl.PtrOffset(0))
+	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, 8*4, gl.PtrOffset(0))
 	gl.EnableVertexAttribArray(0)
-	gl.VertexAttribPointer(1,
-		3,
-		gl.FLOAT,
-		false,
-		6*4,
-		gl.PtrOffset(12))
+	gl.VertexAttribPointer(1, 3, gl.FLOAT, false, 8*4, gl.PtrOffset(12))
 	gl.EnableVertexAttribArray(1)
+	gl.VertexAttribPointer(2, 2, gl.FLOAT, false, 8*4, gl.PtrOffset(24))
+	gl.EnableVertexAttribArray(2)
 	return VAO
 }
 
