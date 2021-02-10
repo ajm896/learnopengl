@@ -3,26 +3,13 @@ package main
 import (
 	"image"
 	"image/draw"
-	_ "image/jpeg"
+	"log"
 	"os"
-	"runtime"
 
 	"github.com/go-gl/gl/v3.3-core/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
 	"github.com/go-gl/mathgl/mgl32"
 )
-
-const (
-	fSize = 4
-	w     = 800
-	h     = 600
-
-	texturePath = "assets/container.jpg"
-	vPath       = "shaders/box.vert"
-	fPath       = "shaders/box.frag"
-)
-
-var firstMouse = true
 
 var (
 	bModel = []float32{
@@ -76,111 +63,54 @@ var (
 )
 
 var (
-	cubePositions = [][]float32{
-		{0.0, 0.0, 0.0},
-		{2.0, 5.0, -15.0},
-		{-1.5, -2.2, -2.5},
-		{-3.8, -2.0, -12.3},
-		{2.4, -0.4, -3.5},
-		{-1.7, 3.0, -7.5},
-		{1.3, -2.0, -2.5},
-		{1.5, 2.0, -2.5},
-		{1.5, 0.2, -1.5},
-		{-1.3, 1.0, -1.5},
+	cubePositions = []mgl32.Vec3{
+		mgl32.Vec3{0.0, 0.0, 0.0},
+		mgl32.Vec3{2.0, 5.0, -15.0},
+		mgl32.Vec3{-1.5, -2.2, -2.5},
+		mgl32.Vec3{-3.8, -2.0, -12.3},
+		mgl32.Vec3{2.4, -0.4, -3.5},
+		mgl32.Vec3{-1.7, 3.0, -7.5},
+		mgl32.Vec3{1.3, -2.0, -2.5},
+		mgl32.Vec3{1.5, 2.0, -2.5},
+		mgl32.Vec3{1.5, 0.2, -1.5},
+		mgl32.Vec3{-1.3, 1.0, -1.5},
 	}
 )
 
-var camera = DefaultCamera()
+func initGLFW() *glfw.Window {
 
-var (
-	dT       float32 = 0.0
-	lastTime float32 = 0.0
-)
-
-var (
-	lastX float32 = 400
-	lastY float32 = 300
-)
-
-func main() {
-	runtime.LockOSThread()
-
-	window := initGLFW()
-	defer glfw.Terminate()
-
-	prog := initGL()
-
-	vao, texture := makeObject(bModel, bIndices)
-
-	window.SetKeyCallback(keyHandler)
-	window.SetCursorPosCallback(mouseControl)
-	// gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
-
-	proj := mgl32.Perspective(mgl32.DegToRad(75), w/h, 0.1, 100)
-
-	for !window.ShouldClose() {
-		currentTime := glfw.GetTime()
-		dT = float32(currentTime) - lastTime
-		lastTime = float32(currentTime)
-
-		prog.Use()
-
-		view := camera.GetViewMatrix()
-
-		prog.SetMat4("view\x00", view)
-		prog.SetMat4("proj\x00", proj)
-
-		glfw.PollEvents()
-		render(vao, texture, prog)
-		window.SwapBuffers()
+	err := glfw.Init()
+	if err != nil {
+		panic(err)
 	}
+
+	glfw.WindowHint(glfw.Resizable, glfw.False)
+	glfw.WindowHint(glfw.ContextVersionMajor, 3)
+	glfw.WindowHint(glfw.ContextVersionMinor, 3)
+	glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLCoreProfile)
+	glfw.WindowHint(glfw.OpenGLForwardCompatible, glfw.True)
+
+	window, err := glfw.CreateWindow(w, h, "Hello World", nil, nil)
+	if err != nil {
+		panic(err)
+	}
+	window.SetInputMode(glfw.CursorMode, glfw.CursorDisabled)
+	window.MakeContextCurrent()
+
+	return window
 }
 
-func keyHandler(w *glfw.Window, key glfw.Key, scancode int,
-	action glfw.Action, mods glfw.ModifierKey) {
-
-	switch key {
-	case glfw.KeyEscape:
-		w.SetShouldClose(true)
-	case glfw.KeyW:
-		camera.ProcessKeyboard(Up, dT)
-	case glfw.KeyA:
-		camera.ProcessKeyboard(Left, dT)
-	case glfw.KeyS:
-		camera.ProcessKeyboard(Down, dT)
-	case glfw.KeyD:
-		camera.ProcessKeyboard(Right, dT)
-	default:
-		return
+func initGL() Shader {
+	if err := gl.Init(); err != nil {
+		panic(err)
 	}
-}
+	version := gl.GoStr(gl.GetString(gl.VERSION))
+	log.Println("OpenGL version", version)
 
-func render(vao uint32, texture uint32, prog Shader) {
-	clear()
+	prog := NewShader(vPath, fPath)
+	gl.Enable(gl.DEPTH_TEST)
 
-	gl.BindVertexArray(vao)
-	gl.BindTexture(gl.TEXTURE_2D, texture)
-
-	// gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINES)
-	// gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
-	for i := 0; i < 10; i++ {
-		trans := mgl32.Translate3D(cubePositions[i][0],
-			cubePositions[i][1],
-			cubePositions[i][2])
-
-		rot := mgl32.HomogRotate3D(mgl32.DegToRad(20.0*float32(i)), mgl32.Vec3{1.0, .3, .5})
-
-		model := mgl32.Ident4()
-
-		model = model.Mul4(trans)
-
-		model = model.Mul4(rot)
-
-		prog.SetMat4("model\x00", model)
-
-		gl.DrawArrays(gl.TRIANGLES, 0, 36)
-	}
-
+	return prog
 }
 
 func makeObject(verts []float32, indices []uint32) (uint32, uint32) {
@@ -250,21 +180,4 @@ func loadTextImg(texturePath string) *image.RGBA {
 func clear() {
 	gl.ClearColor(0.2, 0.3, 0.3, 1)
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-
-}
-
-func mouseControl(w *glfw.Window, xpos, ypos float64) {
-	if firstMouse {
-		lastX = float32(xpos)
-		lastY = float32(ypos)
-		firstMouse = false
-	}
-	xOffset := float32(xpos) - lastX
-	yOffset := lastY - float32(ypos)
-
-	lastX = float32(xpos)
-	lastY = float32(ypos)
-
-	camera.ProcessMouseMovement(xOffset, yOffset)
-
 }
