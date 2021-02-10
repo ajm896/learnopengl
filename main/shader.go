@@ -51,7 +51,7 @@ func compileShader(path string, shaderType uint32) (uint32, error) {
 		panic("Couldn't read frag shader")
 	}
 
-	data := make([]byte, 512)
+	data := make([]byte, 1024)
 	source.Read(data)
 	sourceString := string(data)
 

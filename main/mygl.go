@@ -59,42 +59,6 @@ func initGL() {
 	gl.Enable(gl.DEPTH_TEST)
 }
 
-func makeObject(verts []float32) uint32 {
-	var VBO, VAO uint32
-
-	gl.GenVertexArrays(1, &VAO)
-	gl.BindVertexArray(VAO)
-
-	makeVBO(VBO, verts)
-	// makeEBO(EBO, indices)
-
-	//POS
-	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, fSize*5, gl.PtrOffset(0))
-	gl.EnableVertexAttribArray(0)
-
-	// //Color
-	// gl.VertexAttribPointer(1, 3, gl.FLOAT, false, fSize*5, gl.PtrOffset(12))
-	// gl.EnableVertexAttribArray(1)
-
-	// //Text Coords
-	// gl.VertexAttribPointer(2, 2, gl.FLOAT, false, fSize*5, gl.PtrOffset(12))
-	// gl.EnableVertexAttribArray(2)
-
-	// m := loadTextImg(texturePath)
-
-	// gl.GenTextures(1, &texture)
-	// gl.BindTexture(gl.TEXTURE_2D, texture)
-
-	// gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
-	// gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
-	// gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-	// gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-
-	// gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 512, 512, 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(m.Pix))
-	// gl.GenerateMipmap(gl.TEXTURE_2D)
-
-	return VAO
-}
 func makeVBO(vbo uint32, verts []float32) {
 	gl.GenBuffers(1, &vbo)
 	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
@@ -124,6 +88,6 @@ func loadTextImg(texturePath string) *image.RGBA {
 }
 
 func clear() {
-	gl.ClearColor(0.2, 0.3, 0.3, 1)
+	gl.ClearColor(0.1, 0.1, 0.1, 1)
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 }

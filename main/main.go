@@ -44,11 +44,8 @@ func main() {
 	cubeShader := NewShader(boxVShaderPath, boxFShaderPath)
 	lampShader := NewShader(lampVShaderPath, lampFShaderPath)
 
-	cubeVao := makeObject(CubeMesh)
-	lightVao := makeObject(CubeMesh)
-
-	cube := NewCube(cubePositions[0], cubeVao, cubeShader)
-	light := DefaultLight(lightVao, lampShader)
+	cube := NewCube(cubePositions[0], CubeMesh, cubeShader)
+	light := DefaultLight(CubeMesh, lampShader)
 
 	scale := mgl32.Scale3D(.5, .5, .5)
 	light.DoTransform(scale)
@@ -72,6 +69,7 @@ func main() {
 
 func render(view, proj mgl32.Mat4, obs []drawable) {
 	clear()
+	// obs[0].Draw(view, proj)
 	for i := 0; i < len(obs); i++ {
 		obs[i].Draw(view, proj)
 	}

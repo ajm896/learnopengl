@@ -49,7 +49,7 @@ type Camera struct {
 //DefaultCamera ...
 func DefaultCamera() Camera {
 	c := Camera{
-		Position:    mgl32.Vec3{0, 0, 3.0},
+		Position:    mgl32.Vec3{-1, 1, 3.0},
 		Front:       mgl32.Vec3{0, 0, -1.0},
 		Up:          mgl32.Vec3{0, 1.0, 0},
 		WorldUp:     mgl32.Vec3{0, 1.0, 0},
@@ -121,4 +121,5 @@ func (c *Camera) updateCameraVectors() {
 	c.Up = c.Right.Cross(c.Front).Normalize()
 	// fmt.Println("End: ", c.Front)
 
+	// c.Position = c.Front.Mul(-1)
 }
