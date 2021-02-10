@@ -2,6 +2,7 @@ package main
 
 import (
 	_ "image/jpeg"
+	"math"
 	"runtime"
 
 	"github.com/go-gl/glfw/v3.3/glfw"
@@ -62,6 +63,9 @@ func main() {
 		tick()
 		glfw.PollEvents()
 		view := camera.GetViewMatrix()
+		light.Color[0] = float32(math.Sin(glfw.GetTime() * 2.0))
+		light.Color[1] = float32(math.Sin(glfw.GetTime() * 0.7))
+		light.Color[2] = float32(math.Sin(glfw.GetTime() * 1.3))
 		render(view, proj, obs)
 		window.SwapBuffers()
 	}
@@ -70,6 +74,7 @@ func main() {
 func render(view, proj mgl32.Mat4, obs []drawable) {
 	clear()
 	// obs[0].Draw(view, proj)
+
 	for i := 0; i < len(obs); i++ {
 		obs[i].Draw(view, proj)
 	}

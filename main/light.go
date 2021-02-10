@@ -6,7 +6,7 @@ import (
 )
 
 //LightPos ...
-var LightPos mgl32.Vec3 = mgl32.Vec3{3, 3, 3}
+var LightPos mgl32.Vec3 = mgl32.Vec3{1, 1, 3}
 
 //Light ...
 type Light struct {

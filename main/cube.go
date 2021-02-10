@@ -82,6 +82,17 @@ func (c Cube) Draw(view, proj mgl32.Mat4) {
 	c.Shader.Use()
 	c.Shader.SetVec3("lightPos\x00", LightPos)
 	c.Shader.SetVec3("lightColor\x00", mgl32.Vec3{1, 1, 1})
+
+	//Material
+	c.Shader.SetVec3("material.ambient\x00", mgl32.Vec3{0.0215, 0.1745, 0.0215})
+	c.Shader.SetVec3("material.diffuse\x00", mgl32.Vec3{0.07568, 0.61424, 0.07568})
+	c.Shader.SetVec3("material.specular\x00", mgl32.Vec3{0.633, 0.727811, 0.633})
+	c.Shader.SetFloat("material.shininess\x00", .6*128)
+
+	c.Shader.SetVec3("light.ambinet\x00", mgl32.Vec3{0.2, 0.2, 0.2})
+	c.Shader.SetVec3("light.diffuse\x00", mgl32.Vec3{0.5, 0.5, 0.5})
+	c.Shader.SetVec3("light.specular\x00", mgl32.Vec3{1.0, 1.0, 1.0})
+
 	c.Shader.SetMat4("view\x00", view)
 	c.Shader.SetMat4("proj\x00", proj)
 	c.Shader.SetMat4("model\x00", c.Transform)
