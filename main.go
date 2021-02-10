@@ -5,7 +5,6 @@ import (
 	"image/draw"
 	_ "image/jpeg"
 	"log"
-	"math"
 	"os"
 	"runtime"
 
@@ -22,8 +21,6 @@ const (
 	texturePath = "assets/container.jpg"
 	vPath       = "shaders/box.vert"
 	fPath       = "shaders/box.frag"
-
-	cameraSens float32 = 0.1
 )
 
 var firstMouse = true
@@ -94,15 +91,7 @@ var (
 	}
 )
 
-var (
-	cameraPos       = mgl32.Vec3{0, 0, 3.0}
-	cameraFront     = mgl32.Vec3{0, 0, -1.0}
-	cameraUp        = mgl32.Vec3{0, 1.0, 0}
-	cameraDirection = mgl32.Vec3{0, -90, 0}
-
-	pitch float32 = 0.0
-	yaw   float32 = -90.0
-)
+var camera = DefaultCamera()
 
 var (
 	dT       float32 = 0.0
@@ -137,7 +126,7 @@ func main() {
 
 		prog.Use()
 
-		view := mgl32.LookAtV(cameraPos, cameraPos.Add(cameraFront), cameraUp)
+		view := camera.GetViewMatrix()
 
 		prog.SetMat4("view\x00", view)
 		prog.SetMat4("proj\x00", proj)
@@ -184,19 +173,20 @@ func initGL() Shader {
 	return prog
 }
 
-func keyHandler(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
-	var cameraSpeed float32 = 10 * dT
+func keyHandler(w *glfw.Window, key glfw.Key, scancode int,
+	action glfw.Action, mods glfw.ModifierKey) {
+
 	switch key {
 	case glfw.KeyEscape:
 		w.SetShouldClose(true)
 	case glfw.KeyW:
-		cameraPos = cameraPos.Add(cameraFront.Mul(cameraSpeed))
+		camera.ProcessKeyboard(Up, dT)
 	case glfw.KeyA:
-		cameraPos = cameraPos.Sub(cameraFront.Cross(cameraUp).Normalize().Mul(cameraSpeed))
+		camera.ProcessKeyboard(Left, dT)
 	case glfw.KeyS:
-		cameraPos = cameraPos.Sub(cameraFront.Mul(cameraSpeed))
+		camera.ProcessKeyboard(Down, dT)
 	case glfw.KeyD:
-		cameraPos = cameraPos.Add(cameraFront.Cross(cameraUp).Normalize().Mul(cameraSpeed))
+		camera.ProcessKeyboard(Right, dT)
 	default:
 		return
 	}
@@ -300,8 +290,7 @@ func clear() {
 
 }
 
-func mouseControl(w *glfw.Window, xpos float64, ypos float64) {
-
+func mouseControl(w *glfw.Window, xpos, ypos float64) {
 	if firstMouse {
 		lastX = float32(xpos)
 		lastY = float32(ypos)
@@ -313,27 +302,6 @@ func mouseControl(w *glfw.Window, xpos float64, ypos float64) {
 	lastX = float32(xpos)
 	lastY = float32(ypos)
 
-	xOffset *= cameraSens
-	yOffset *= cameraSens
-
-	yaw += xOffset
-	pitch += yOffset
-
-	if pitch > 89.0 {
-		pitch = 89.0
-	}
-	if pitch < -89.0 {
-		pitch = -89.0
-	}
-
-	newX := math.Cos(float64(mgl32.DegToRad(yaw))) * math.Cos(float64(mgl32.DegToRad(pitch)))
-	newY := math.Sin(float64(mgl32.DegToRad(pitch)))
-	newZ := math.Sin(float64(mgl32.DegToRad(yaw))) * math.Cos(float64(mgl32.DegToRad(pitch)))
-
-	cameraDirection[0] = float32(newX)
-	cameraDirection[1] = float32(newY)
-	cameraDirection[2] = float32(newZ)
-
-	cameraFront = cameraDirection.Normalize()
+	camera.ProcessMouseMovement(xOffset, yOffset)
 
 }
