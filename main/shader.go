@@ -100,3 +100,8 @@ func (s Shader) SetInt(loc string, n int32) {
 func (s Shader) SetMat4(loc string, m mgl32.Mat4) {
 	gl.UniformMatrix4fv(gl.GetUniformLocation(s.id, gl.Str(loc)), 1, false, &m[0])
 }
+
+//SetVec3 ...
+func (s Shader) SetVec3(loc string, v mgl32.Vec3) {
+	gl.Uniform3fv(gl.GetUniformLocation(s.id, gl.Str(loc)), 1, &v[0])
+}
