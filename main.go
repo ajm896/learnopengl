@@ -5,6 +5,7 @@ import (
 	"image/draw"
 	_ "image/jpeg"
 	"log"
+	"math"
 	"os"
 	"runtime"
 
@@ -21,7 +22,11 @@ const (
 	texturePath = "assets/container.jpg"
 	vPath       = "shaders/box.vert"
 	fPath       = "shaders/box.frag"
+
+	cameraSens float32 = 0.1
 )
+
+var firstMouse = true
 
 var (
 	bModel = []float32{
@@ -89,6 +94,26 @@ var (
 	}
 )
 
+var (
+	cameraPos       = mgl32.Vec3{0, 0, 3.0}
+	cameraFront     = mgl32.Vec3{0, 0, -1.0}
+	cameraUp        = mgl32.Vec3{0, 1.0, 0}
+	cameraDirection = mgl32.Vec3{0, -90, 0}
+
+	pitch float32 = 0.0
+	yaw   float32 = -90.0
+)
+
+var (
+	dT       float32 = 0.0
+	lastTime float32 = 0.0
+)
+
+var (
+	lastX float32 = 400
+	lastY float32 = 300
+)
+
 func main() {
 	runtime.LockOSThread()
 
@@ -100,12 +125,19 @@ func main() {
 	vao, texture := makeObject(bModel, bIndices)
 
 	window.SetKeyCallback(keyHandler)
+	window.SetCursorPosCallback(mouseControl)
 	// gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
 
+	proj := mgl32.Perspective(mgl32.DegToRad(75), w/h, 0.1, 100)
+
 	for !window.ShouldClose() {
+		currentTime := glfw.GetTime()
+		dT = float32(currentTime) - lastTime
+		lastTime = float32(currentTime)
+
 		prog.Use()
-		view := mgl32.Translate3D(0, 0, -3)
-		proj := mgl32.Perspective(mgl32.DegToRad(45), w/h, 0.1, 100)
+
+		view := mgl32.LookAtV(cameraPos, cameraPos.Add(cameraFront), cameraUp)
 
 		prog.SetMat4("view\x00", view)
 		prog.SetMat4("proj\x00", proj)
@@ -133,6 +165,7 @@ func initGLFW() *glfw.Window {
 	if err != nil {
 		panic(err)
 	}
+	window.SetInputMode(glfw.CursorMode, glfw.CursorDisabled)
 	window.MakeContextCurrent()
 
 	return window
@@ -152,9 +185,18 @@ func initGL() Shader {
 }
 
 func keyHandler(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
+	var cameraSpeed float32 = 10 * dT
 	switch key {
 	case glfw.KeyEscape:
 		w.SetShouldClose(true)
+	case glfw.KeyW:
+		cameraPos = cameraPos.Add(cameraFront.Mul(cameraSpeed))
+	case glfw.KeyA:
+		cameraPos = cameraPos.Sub(cameraFront.Cross(cameraUp).Normalize().Mul(cameraSpeed))
+	case glfw.KeyS:
+		cameraPos = cameraPos.Sub(cameraFront.Mul(cameraSpeed))
+	case glfw.KeyD:
+		cameraPos = cameraPos.Add(cameraFront.Cross(cameraUp).Normalize().Mul(cameraSpeed))
 	default:
 		return
 	}
@@ -169,11 +211,17 @@ func render(vao uint32, texture uint32, prog Shader) {
 	// gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINES)
 	// gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
 	for i := 0; i < 10; i++ {
-		model := mgl32.Translate3D(cubePositions[i][0],
+		trans := mgl32.Translate3D(cubePositions[i][0],
 			cubePositions[i][1],
 			cubePositions[i][2])
 
-		model = model.Mul4(mgl32.HomogRotate3D(20.0*float32(i), mgl32.Vec3{.0, .3, .5}))
+		rot := mgl32.HomogRotate3D(mgl32.DegToRad(20.0*float32(i)), mgl32.Vec3{1.0, .3, .5})
+
+		model := mgl32.Ident4()
+
+		model = model.Mul4(trans)
+
+		model = model.Mul4(rot)
 
 		prog.SetMat4("model\x00", model)
 
@@ -249,5 +297,43 @@ func loadTextImg(texturePath string) *image.RGBA {
 func clear() {
 	gl.ClearColor(0.2, 0.3, 0.3, 1)
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+
+}
+
+func mouseControl(w *glfw.Window, xpos float64, ypos float64) {
+
+	if firstMouse {
+		lastX = float32(xpos)
+		lastY = float32(ypos)
+		firstMouse = false
+	}
+	xOffset := float32(xpos) - lastX
+	yOffset := lastY - float32(ypos)
+
+	lastX = float32(xpos)
+	lastY = float32(ypos)
+
+	xOffset *= cameraSens
+	yOffset *= cameraSens
+
+	yaw += xOffset
+	pitch += yOffset
+
+	if pitch > 89.0 {
+		pitch = 89.0
+	}
+	if pitch < -89.0 {
+		pitch = -89.0
+	}
+
+	newX := math.Cos(float64(mgl32.DegToRad(yaw))) * math.Cos(float64(mgl32.DegToRad(pitch)))
+	newY := math.Sin(float64(mgl32.DegToRad(pitch)))
+	newZ := math.Sin(float64(mgl32.DegToRad(yaw))) * math.Cos(float64(mgl32.DegToRad(pitch)))
+
+	cameraDirection[0] = float32(newX)
+	cameraDirection[1] = float32(newY)
+	cameraDirection[2] = float32(newZ)
+
+	cameraFront = cameraDirection.Normalize()
 
 }
