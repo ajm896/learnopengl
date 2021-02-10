@@ -39,7 +39,7 @@ func main() {
 
 	prog := initGL()
 
-	vao, texture := makeObject(bModel, bIndices)
+	vao, texture := makeObject(mesh)
 
 	window.SetKeyCallback(keyHandler)
 	window.SetCursorPosCallback(mouseControl)

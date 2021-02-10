@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	bModel = []float32{
+	mesh = []float32{
 		-0.5, -0.5, -0.5, 0.0, 0.0,
 		0.5, -0.5, -0.5, 1.0, 0.0,
 		0.5, 0.5, -0.5, 1.0, 1.0,
@@ -55,25 +55,20 @@ var (
 		-0.5, 0.5, 0.5, 0.0, 0.0,
 		-0.5, 0.5, -0.5, 0.0, 1.0,
 	}
-
-	bIndices = []uint32{
-		0, 1, 3,
-		1, 2, 3,
-	}
 )
 
 var (
 	cubePositions = []mgl32.Vec3{
-		mgl32.Vec3{0.0, 0.0, 0.0},
-		mgl32.Vec3{2.0, 5.0, -15.0},
-		mgl32.Vec3{-1.5, -2.2, -2.5},
-		mgl32.Vec3{-3.8, -2.0, -12.3},
-		mgl32.Vec3{2.4, -0.4, -3.5},
-		mgl32.Vec3{-1.7, 3.0, -7.5},
-		mgl32.Vec3{1.3, -2.0, -2.5},
-		mgl32.Vec3{1.5, 2.0, -2.5},
-		mgl32.Vec3{1.5, 0.2, -1.5},
-		mgl32.Vec3{-1.3, 1.0, -1.5},
+		{0.0, 0.0, 0.0},
+		{2.0, 5.0, -15.0},
+		{-1.5, -2.2, -2.5},
+		{-3.8, -2.0, -12.3},
+		{2.4, -0.4, -3.5},
+		{-1.7, 3.0, -7.5},
+		{1.3, -2.0, -2.5},
+		{1.5, 2.0, -2.5},
+		{1.5, 0.2, -1.5},
+		{-1.3, 1.0, -1.5},
 	}
 )
 
@@ -113,14 +108,14 @@ func initGL() Shader {
 	return prog
 }
 
-func makeObject(verts []float32, indices []uint32) (uint32, uint32) {
-	var VBO, VAO, EBO, texture uint32
+func makeObject(verts []float32) (uint32, uint32) {
+	var VBO, VAO, texture uint32
 
 	gl.GenVertexArrays(1, &VAO)
 	gl.BindVertexArray(VAO)
 
 	makeVBO(VBO, verts)
-	makeEBO(EBO, indices)
+	// makeEBO(EBO, indices)
 
 	//POS
 	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, fSize*5, gl.PtrOffset(0))
